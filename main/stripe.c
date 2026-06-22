@@ -1,0 +1,53 @@
+#include "stripe.h"
+
+#include "esp_check.h"
+#include "esp_log.h"
+#include "led_strip.h"
+
+#define LED_COUNT (FONT_HEIGHT * LED_COLS)
+
+static const char *TAG = "stripe";
+static led_strip_handle_t strip;
+
+void stripe_init(void)
+{
+    led_strip_config_t strip_config = {
+        .strip_gpio_num = STRIPE_GPIO_NUM,
+        .max_leds = LED_COUNT,
+        .led_pixel_format = LED_PIXEL_FORMAT_GRB,
+        .led_model = LED_MODEL_WS2812,
+        .flags = {
+            .invert_out = false,
+        },
+    };
+
+    led_strip_rmt_config_t rmt_config = {
+        .clk_src = RMT_CLK_SRC_DEFAULT,
+        .resolution_hz = 10 * 1000 * 1000,
+        .mem_block_symbols = 0,
+        .flags = {
+            .with_dma = false,
+        },
+    };
+
+    ESP_ERROR_CHECK(led_strip_new_rmt_device(&strip_config, &rmt_config, &strip));
+    ESP_ERROR_CHECK(led_strip_clear(strip));
+
+    ESP_LOGI(TAG, "WS2812B driver initialized on GPIO %d (%d LEDs)", STRIPE_GPIO_NUM, LED_COUNT);
+}
+
+void stripe_send(const uint8_t led_buf[FONT_HEIGHT][LED_COLS][LED_CHANNELS])
+{
+    for (int row = 0; row < FONT_HEIGHT; row++) {
+        for (int col = 0; col < LED_COLS; col++) {
+            int index = row * LED_COLS + col;
+            // If the matrix wiring is serpentine/zigzag, this index mapping may need adjustment.
+            uint8_t g = led_buf[row][col][0];
+            uint8_t r = led_buf[row][col][1];
+            uint8_t b = led_buf[row][col][2];
+            ESP_ERROR_CHECK(led_strip_set_pixel(strip, index, r, g, b));
+        }
+    }
+
+    ESP_ERROR_CHECK(led_strip_refresh(strip));
+}
