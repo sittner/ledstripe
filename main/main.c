@@ -6,6 +6,7 @@
 
 #include "font.h"
 #include "stripe.h"
+#include "wifi.h"
 
 #define SCROLL_HZ 30
 
@@ -138,4 +139,6 @@ void app_main(void)
 
     ESP_LOGI(TAG, "Starting scroll task at %d Hz", SCROLL_HZ);
     xTaskCreate(scroll_task, "scroll_task", 4096, NULL, 5, NULL);
+
+    wifi_init();
 }
