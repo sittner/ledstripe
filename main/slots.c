@@ -99,8 +99,14 @@ void slots_save(int index, const char *text, const char *colors)
         char key_color[16];
         snprintf(key_text, sizeof(key_text), "slot%d_text", index);
         snprintf(key_color, sizeof(key_color), "slot%d_color", index);
-        nvs_set_str(nvs, key_text, slots[index].text);
-        nvs_set_str(nvs, key_color, slots[index].colors);
+        ret = nvs_set_str(nvs, key_text, slots[index].text);
+        if (ret != ESP_OK) {
+            ESP_LOGE(TAG, "nvs_set_str(%s) failed: %s", key_text, esp_err_to_name(ret));
+        }
+        ret = nvs_set_str(nvs, key_color, slots[index].colors);
+        if (ret != ESP_OK) {
+            ESP_LOGE(TAG, "nvs_set_str(%s) failed: %s", key_color, esp_err_to_name(ret));
+        }
         nvs_commit(nvs);
         nvs_close(nvs);
     } else {
@@ -126,7 +132,10 @@ void slots_set_active(int index)
     nvs_handle_t nvs;
     esp_err_t ret = nvs_open(NVS_NAMESPACE, NVS_READWRITE, &nvs);
     if (ret == ESP_OK) {
-        nvs_set_i32(nvs, "active", (int32_t)index);
+        ret = nvs_set_i32(nvs, "active", (int32_t)index);
+        if (ret != ESP_OK) {
+            ESP_LOGE(TAG, "nvs_set_i32(active) failed: %s", esp_err_to_name(ret));
+        }
         nvs_commit(nvs);
         nvs_close(nvs);
     } else {

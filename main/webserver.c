@@ -149,9 +149,10 @@ static void handle_ws_message(const char *msg)
         cJSON *colors = cJSON_GetObjectItem(root, "colors");
 
         if (cJSON_IsNumber(slot) && cJSON_IsString(text) && cJSON_IsString(colors)) {
-            int idx = (int)slot->valuedouble;
-            if (idx < 0 || idx >= SLOTS_COUNT) {
-                ESP_LOGE(TAG, "Invalid slot index %d in 'save' command", idx);
+            double dval = slot->valuedouble;
+            int idx = (int)dval;
+            if ((double)idx != dval || idx < 0 || idx >= SLOTS_COUNT) {
+                ESP_LOGE(TAG, "Invalid slot index in 'save' command");
             } else {
                 slots_save(idx, text->valuestring, colors->valuestring);
                 ws_broadcast_state();
@@ -162,9 +163,10 @@ static void handle_ws_message(const char *msg)
     } else if (strcmp(cmd->valuestring, "activate") == 0) {
         cJSON *slot = cJSON_GetObjectItem(root, "slot");
         if (cJSON_IsNumber(slot)) {
-            int idx = (int)slot->valuedouble;
-            if (idx < 0 || idx >= SLOTS_COUNT) {
-                ESP_LOGE(TAG, "Invalid slot index %d in 'activate' command", idx);
+            double dval = slot->valuedouble;
+            int idx = (int)dval;
+            if ((double)idx != dval || idx < 0 || idx >= SLOTS_COUNT) {
+                ESP_LOGE(TAG, "Invalid slot index in 'activate' command");
             } else {
                 slots_set_active(idx);
                 ws_broadcast_state();
@@ -214,7 +216,7 @@ static esp_err_t ws_handler(httpd_req_t *req)
 
     frame.payload = malloc(frame.len + 1);
     if (frame.payload == NULL) {
-        ESP_LOGE(TAG, "Failed to allocate frame buffer (%d bytes)", (int)frame.len + 1);
+        ESP_LOGE(TAG, "Failed to allocate frame buffer (%zu bytes)", frame.len + 1);
         return ESP_ERR_NO_MEM;
     }
 
