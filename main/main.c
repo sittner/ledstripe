@@ -165,5 +165,6 @@ void app_main(void)
 
     ESP_LOGI(TAG, "Starting scroll task at %d Hz", SCROLL_HZ);
     memset(led_buf, 0, sizeof(led_buf));
+    /* Stack increased from 4096: slot_t local (512 B) + slots API calls. */
     xTaskCreate(scroll_task, "scroll_task", 8192, NULL, 5, NULL);
 }

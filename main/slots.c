@@ -102,10 +102,14 @@ void slots_save(int index, const char *text, const char *colors)
         ret = nvs_set_str(nvs, key_text, slots[index].text);
         if (ret != ESP_OK) {
             ESP_LOGE(TAG, "nvs_set_str(%s) failed: %s", key_text, esp_err_to_name(ret));
+            nvs_close(nvs);
+            return;
         }
         ret = nvs_set_str(nvs, key_color, slots[index].colors);
         if (ret != ESP_OK) {
             ESP_LOGE(TAG, "nvs_set_str(%s) failed: %s", key_color, esp_err_to_name(ret));
+            nvs_close(nvs);
+            return;
         }
         nvs_commit(nvs);
         nvs_close(nvs);
@@ -153,6 +157,10 @@ int slots_get_active(void)
     return active;
 }
 
+/* NOTE: slots_get and slots_get_all return raw pointers to the internal array
+ * without mutex protection. They are safe to call only from a context that
+ * has exclusive access to slot data (e.g., before tasks start). For concurrent
+ * access use slots_copy_active() or slots_copy_all() instead. */
 const slot_t *slots_get(int index)
 {
     if (index < 0 || index >= SLOTS_COUNT) {

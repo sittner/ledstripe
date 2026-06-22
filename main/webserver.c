@@ -128,6 +128,22 @@ static void ws_broadcast_state(void)
     }
 }
 
+static bool parse_slot_index(cJSON *slot_json, const char *cmd_name, int *idx_out)
+{
+    if (!cJSON_IsNumber(slot_json)) {
+        ESP_LOGE(TAG, "Missing or non-numeric 'slot' in '%s' command", cmd_name);
+        return false;
+    }
+    double dval = slot_json->valuedouble;
+    int idx = (int)dval;
+    if ((double)idx != dval || idx < 0 || idx >= SLOTS_COUNT) {
+        ESP_LOGE(TAG, "Invalid slot index in '%s' command", cmd_name);
+        return false;
+    }
+    *idx_out = idx;
+    return true;
+}
+
 static void handle_ws_message(const char *msg)
 {
     cJSON *root = cJSON_Parse(msg);
@@ -147,32 +163,25 @@ static void handle_ws_message(const char *msg)
         cJSON *slot = cJSON_GetObjectItem(root, "slot");
         cJSON *text = cJSON_GetObjectItem(root, "text");
         cJSON *colors = cJSON_GetObjectItem(root, "colors");
+        int idx;
 
-        if (cJSON_IsNumber(slot) && cJSON_IsString(text) && cJSON_IsString(colors)) {
-            double dval = slot->valuedouble;
-            int idx = (int)dval;
-            if ((double)idx != dval || idx < 0 || idx >= SLOTS_COUNT) {
-                ESP_LOGE(TAG, "Invalid slot index in 'save' command");
-            } else {
-                slots_save(idx, text->valuestring, colors->valuestring);
-                ws_broadcast_state();
-            }
-        } else {
+        if (!parse_slot_index(slot, "save", &idx)) {
+            /* error already logged */
+        } else if (!cJSON_IsString(text) || !cJSON_IsString(colors)) {
             ESP_LOGE(TAG, "Invalid 'save' command parameters");
+        } else {
+            slots_save(idx, text->valuestring, colors->valuestring);
+            ws_broadcast_state();
         }
     } else if (strcmp(cmd->valuestring, "activate") == 0) {
         cJSON *slot = cJSON_GetObjectItem(root, "slot");
-        if (cJSON_IsNumber(slot)) {
-            double dval = slot->valuedouble;
-            int idx = (int)dval;
-            if ((double)idx != dval || idx < 0 || idx >= SLOTS_COUNT) {
-                ESP_LOGE(TAG, "Invalid slot index in 'activate' command");
-            } else {
-                slots_set_active(idx);
-                ws_broadcast_state();
-            }
+        int idx;
+
+        if (!parse_slot_index(slot, "activate", &idx)) {
+            /* error already logged */
         } else {
-            ESP_LOGE(TAG, "Invalid 'activate' command parameters");
+            slots_set_active(idx);
+            ws_broadcast_state();
         }
     } else {
         ESP_LOGW(TAG, "Unknown command: %s", cmd->valuestring);
