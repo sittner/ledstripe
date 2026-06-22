@@ -10,4 +10,3 @@
 extern const uint16_t font[FONT_CHARS][FONT_WIDTH];
 
 #endif
-
