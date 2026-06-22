@@ -123,6 +123,7 @@ static void scroll_task(void *arg)
     TickType_t last_wake = xTaskGetTickCount();
 
     int last_active = -1;
+    bool slot_cleared = false;
     slot_t active_copy;
     memset(&active_copy, 0, sizeof(active_copy));
 
@@ -132,17 +133,24 @@ static void scroll_task(void *arg)
         if (current_active != last_active || slots_check_changed()) {
             last_active = current_active;
             slots_copy_active(&active_copy);
+            slot_cleared = false;
 
             if (active_copy.text[0] != '\0') {
+                /* msg_pos stores pointers into active_copy.text / active_copy.colors.
+                 * This is safe because active_copy lives for the lifetime of
+                 * scroll_task(), which never returns. */
                 msg_pos_init(&msg_pos, active_copy.text, active_copy.colors);
             }
         }
 
         if (active_copy.text[0] != '\0') {
             render_scroll_step();
-        } else {
+        } else if (!slot_cleared) {
+            /* Clear the display once when switching to an empty slot,
+             * then stop sending until the slot changes again. */
             memset(led_buf, 0, sizeof(led_buf));
             stripe_send(led_buf);
+            slot_cleared = true;
         }
 
         vTaskDelayUntil(&last_wake, delay_ticks);
