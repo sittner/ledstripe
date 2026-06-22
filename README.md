@@ -18,4 +18,4 @@ idf.py build
 idf.py flash monitor
 ```
 
-If your data pin differs from GPIO48, update `STRIPE_GPIO_NUM` in `main/stripe.h`.
+If your data pin differs from GPIO47, update `STRIPE_GPIO_NUM` in `main/stripe.h`.
