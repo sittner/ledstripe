@@ -8,6 +8,7 @@
 #include "esp_mac.h"
 #include "esp_netif.h"
 #include "esp_wifi.h"
+#include "lwip/ip4_addr.h"
 #include "nvs_flash.h"
 
 #define WIFI_SSID "led"
