@@ -5,15 +5,14 @@
 #include "freertos/task.h"
 
 #include "font.h"
+#include "slots.h"
 #include "stripe.h"
+#include "webserver.h"
 #include "wifi.h"
 
 #define SCROLL_HZ 30
 
 static const char *TAG = "ledstripe";
-
-static const char msg[] = "   \003lichen Gl\232ckwunsch liebe Annette. Wir w\232nschen Dir viele weitere erf\232llte und gl\232ckliche Jahre und eine Hammerfete!      ";
-static const char color[] = "   rcccccc ggggggggggg yyyyy wwwwwwww mmm cccccccc www yyyyy bbbbbbb mmmmmmmm www mmmmmmmmmm ccccc rrr bbbb wwwwwwwwwwm      ";
 
 typedef struct {
     const char *msg_buf;
@@ -123,8 +122,29 @@ static void scroll_task(void *arg)
     const TickType_t delay_ticks = pdMS_TO_TICKS(1000 / SCROLL_HZ);
     TickType_t last_wake = xTaskGetTickCount();
 
+    int last_active = -1;
+    slot_t active_copy;
+    memset(&active_copy, 0, sizeof(active_copy));
+
     while (1) {
-        render_scroll_step();
+        int current_active = slots_get_active();
+
+        if (current_active != last_active || slots_check_changed()) {
+            last_active = current_active;
+            slots_copy_active(&active_copy);
+
+            if (active_copy.text[0] != '\0') {
+                msg_pos_init(&msg_pos, active_copy.text, active_copy.colors);
+            }
+        }
+
+        if (active_copy.text[0] != '\0') {
+            render_scroll_step();
+        } else {
+            memset(led_buf, 0, sizeof(led_buf));
+            stripe_send(led_buf);
+        }
+
         vTaskDelayUntil(&last_wake, delay_ticks);
     }
 }
@@ -134,11 +154,16 @@ void app_main(void)
     ESP_LOGI(TAG, "Initializing LED stripe");
     stripe_init();
 
-    msg_pos_init(&msg_pos, msg, color);
-    memset(led_buf, 0, sizeof(led_buf));
+    ESP_LOGI(TAG, "Initializing slots");
+    slots_init();
+
+    ESP_LOGI(TAG, "Starting WiFi AP");
+    wifi_init();
+
+    ESP_LOGI(TAG, "Starting web server");
+    webserver_init();
 
     ESP_LOGI(TAG, "Starting scroll task at %d Hz", SCROLL_HZ);
-    xTaskCreate(scroll_task, "scroll_task", 4096, NULL, 5, NULL);
-
-    wifi_init();
+    memset(led_buf, 0, sizeof(led_buf));
+    xTaskCreate(scroll_task, "scroll_task", 8192, NULL, 5, NULL);
 }

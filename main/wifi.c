@@ -3,56 +3,17 @@
 #include <string.h>
 
 #include "esp_event.h"
-#include "esp_http_server.h"
 #include "esp_log.h"
 #include "esp_mac.h"
 #include "esp_netif.h"
 #include "esp_wifi.h"
 #include "lwip/ip4_addr.h"
-#include "nvs_flash.h"
 
 #define WIFI_SSID "led"
 #define WIFI_PASSWD "ledstripe"
 #define WIFI_AP_MAX_CONN 4
 
 static const char *TAG = "wifi";
-
-static const char hello_html[] =
-    "<!DOCTYPE html>\n"
-    "<html>\n"
-    "<head><title>LED Stripe</title></head>\n"
-    "<body><h1>Hello World</h1></body>\n"
-    "</html>\n";
-
-static esp_err_t hello_handler(httpd_req_t *req)
-{
-    httpd_resp_set_type(req, "text/html");
-    httpd_resp_send(req, hello_html, HTTPD_RESP_USE_STRLEN);
-    return ESP_OK;
-}
-
-static const httpd_uri_t hello_uri = {
-    .uri = "/",
-    .method = HTTP_GET,
-    .handler = hello_handler,
-    .user_ctx = NULL,
-};
-
-static httpd_handle_t http_server = NULL;
-
-static void start_http_server(void)
-{
-    httpd_config_t config = HTTPD_DEFAULT_CONFIG();
-
-    ESP_LOGI(TAG, "Starting HTTP server on port %d", config.server_port);
-    esp_err_t ret = httpd_start(&http_server, &config);
-    if (ret == ESP_OK) {
-        ESP_ERROR_CHECK(httpd_register_uri_handler(http_server, &hello_uri));
-        ESP_LOGI(TAG, "HTTP server started");
-    } else {
-        ESP_LOGE(TAG, "Failed to start HTTP server: %s", esp_err_to_name(ret));
-    }
-}
 
 static void wifi_event_handler(void *arg, esp_event_base_t event_base,
                                int32_t event_id, void *event_data)
@@ -81,16 +42,6 @@ static void wifi_event_handler(void *arg, esp_event_base_t event_base,
 
 void wifi_init(void)
 {
-    esp_err_t ret;
-
-    /* NVS is required by WiFi to store calibration data */
-    ret = nvs_flash_init();
-    if (ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NEW_VERSION_FOUND) {
-        ESP_ERROR_CHECK(nvs_flash_erase());
-        ret = nvs_flash_init();
-    }
-    ESP_ERROR_CHECK(ret);
-
     ESP_ERROR_CHECK(esp_netif_init());
     ESP_ERROR_CHECK(esp_event_loop_create_default());
 
@@ -129,6 +80,4 @@ void wifi_init(void)
     ESP_ERROR_CHECK(esp_wifi_start());
 
     ESP_LOGI(TAG, "WiFi AP started. SSID: %s, IP: 192.168.0.1", WIFI_SSID);
-
-    start_http_server();
 }
