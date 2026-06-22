@@ -40,6 +40,8 @@ void stripe_init(void)
 void stripe_send(const uint8_t led_buf[FONT_HEIGHT][LED_COLS][LED_CHANNELS])
 {
     esp_err_t err = ESP_OK;
+    int failed_row = -1;
+    int failed_col = -1;
 
     for (int row = 0; row < FONT_HEIGHT; row++) {
         for (int col = 0; col < LED_COLS; col++) {
@@ -52,6 +54,8 @@ void stripe_send(const uint8_t led_buf[FONT_HEIGHT][LED_COLS][LED_CHANNELS])
             uint8_t b = led_buf[row][col][2];
             err = led_strip_set_pixel(strip, index, r, g, b);
             if (err != ESP_OK) {
+                failed_row = row;
+                failed_col = col;
                 break;
             }
         }
@@ -60,6 +64,9 @@ void stripe_send(const uint8_t led_buf[FONT_HEIGHT][LED_COLS][LED_CHANNELS])
         }
     }
 
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG, "led_strip_set_pixel failed at row=%d col=%d: %s", failed_row, failed_col, esp_err_to_name(err));
+    }
     ESP_ERROR_CHECK(err);
     ESP_ERROR_CHECK(led_strip_refresh(strip));
 }
