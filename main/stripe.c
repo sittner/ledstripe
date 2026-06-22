@@ -27,7 +27,7 @@ void stripe_init(void)
         .resolution_hz = RMT_RESOLUTION_HZ,
         .mem_block_symbols = 0,
         .flags = {
-            .with_dma = false,
+            .with_dma = true,
         },
     };
 
@@ -39,6 +39,8 @@ void stripe_init(void)
 
 void stripe_send(const uint8_t led_buf[FONT_HEIGHT][LED_COLS][LED_CHANNELS])
 {
+    esp_err_t err = ESP_OK;
+
     for (int row = 0; row < FONT_HEIGHT; row++) {
         for (int col = 0; col < LED_COLS; col++) {
             int index = row * LED_COLS + col;
@@ -48,9 +50,16 @@ void stripe_send(const uint8_t led_buf[FONT_HEIGHT][LED_COLS][LED_CHANNELS])
             uint8_t g = led_buf[row][col][0];
             uint8_t r = led_buf[row][col][1];
             uint8_t b = led_buf[row][col][2];
-            ESP_ERROR_CHECK(led_strip_set_pixel(strip, index, r, g, b));
+            err = led_strip_set_pixel(strip, index, r, g, b);
+            if (err != ESP_OK) {
+                break;
+            }
+        }
+        if (err != ESP_OK) {
+            break;
         }
     }
 
+    ESP_ERROR_CHECK(err);
     ESP_ERROR_CHECK(led_strip_refresh(strip));
 }

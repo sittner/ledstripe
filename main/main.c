@@ -120,10 +120,11 @@ static void scroll_task(void *arg)
     (void)arg;
 
     const TickType_t delay_ticks = pdMS_TO_TICKS(1000 / SCROLL_HZ);
+    TickType_t last_wake = xTaskGetTickCount();
 
     while (1) {
         render_scroll_step();
-        vTaskDelay(delay_ticks);
+        vTaskDelayUntil(&last_wake, delay_ticks);
     }
 }
 
