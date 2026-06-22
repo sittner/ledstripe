@@ -60,7 +60,6 @@ void stripe_send(const uint8_t led_buf[FONT_HEIGHT][LED_COLS][LED_CHANNELS])
             }
         }
         if (err != ESP_OK) {
-            // Preserve failed_row/failed_col captured from inner loop for diagnostics.
             break;
         }
     }
