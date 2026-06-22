@@ -67,7 +67,6 @@ void stripe_send(const uint8_t led_buf[FONT_HEIGHT][LED_COLS][LED_CHANNELS])
     if (err != ESP_OK) {
         ESP_LOGE(TAG, "led_strip_set_pixel failed at row=%d col=%d: %s", failed_row, failed_col, esp_err_to_name(err));
         ESP_ERROR_CHECK(err);
-        return;
     }
     ESP_ERROR_CHECK(led_strip_refresh(strip));
 }
