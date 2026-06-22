@@ -30,16 +30,19 @@ static esp_err_t root_handler(httpd_req_t *req)
 
 static char *build_state_json(void)
 {
+    slot_t all_slots[SLOTS_COUNT];
+    int active;
+    slots_copy_all(all_slots, &active);
+
     cJSON *root = cJSON_CreateObject();
     if (root == NULL) {
         return NULL;
     }
 
     cJSON_AddStringToObject(root, "cmd", "state");
-    cJSON_AddNumberToObject(root, "active", slots_get_active());
+    cJSON_AddNumberToObject(root, "active", active);
 
     cJSON *slots_arr = cJSON_AddArrayToObject(root, "slots");
-    const slot_t *all_slots = slots_get_all();
     for (int i = 0; i < SLOTS_COUNT; i++) {
         cJSON *slot_obj = cJSON_CreateObject();
         cJSON_AddStringToObject(slot_obj, "text", all_slots[i].text);
@@ -147,8 +150,12 @@ static void handle_ws_message(const char *msg)
 
         if (cJSON_IsNumber(slot) && cJSON_IsString(text) && cJSON_IsString(colors)) {
             int idx = (int)slot->valuedouble;
-            slots_save(idx, text->valuestring, colors->valuestring);
-            ws_broadcast_state();
+            if (idx < 0 || idx >= SLOTS_COUNT) {
+                ESP_LOGE(TAG, "Invalid slot index %d in 'save' command", idx);
+            } else {
+                slots_save(idx, text->valuestring, colors->valuestring);
+                ws_broadcast_state();
+            }
         } else {
             ESP_LOGE(TAG, "Invalid 'save' command parameters");
         }
@@ -156,8 +163,12 @@ static void handle_ws_message(const char *msg)
         cJSON *slot = cJSON_GetObjectItem(root, "slot");
         if (cJSON_IsNumber(slot)) {
             int idx = (int)slot->valuedouble;
-            slots_set_active(idx);
-            ws_broadcast_state();
+            if (idx < 0 || idx >= SLOTS_COUNT) {
+                ESP_LOGE(TAG, "Invalid slot index %d in 'activate' command", idx);
+            } else {
+                slots_set_active(idx);
+                ws_broadcast_state();
+            }
         } else {
             ESP_LOGE(TAG, "Invalid 'activate' command parameters");
         }

@@ -164,11 +164,26 @@ void slots_copy_active(slot_t *dst)
     xSemaphoreGive(slots_mutex);
 }
 
+void slots_copy_all(slot_t dst[SLOTS_COUNT], int *active_out)
+{
+    xSemaphoreTake(slots_mutex, portMAX_DELAY);
+    memcpy(dst, slots, sizeof(slots));
+    if (active_out != NULL) {
+        *active_out = active_slot;
+    }
+    xSemaphoreGive(slots_mutex);
+}
+
 bool slots_check_changed(void)
 {
-    if (!slots_changed_flag) {
-        return false;
+    bool changed = false;
+
+    xSemaphoreTake(slots_mutex, portMAX_DELAY);
+    if (slots_changed_flag) {
+        slots_changed_flag = false;
+        changed = true;
     }
-    slots_changed_flag = false;
-    return true;
+    xSemaphoreGive(slots_mutex);
+
+    return changed;
 }
