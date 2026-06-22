@@ -12,6 +12,7 @@
 #include "nvs_flash.h"
 
 #define WIFI_SSID "led"
+#define WIFI_PASSWD "ledstripe"
 #define WIFI_AP_MAX_CONN 4
 
 static const char *TAG = "wifi";
@@ -117,10 +118,9 @@ void wifi_init(void)
         .ap = {
             .ssid = WIFI_SSID,
             .ssid_len = strlen(WIFI_SSID),
+            .password = WIFI_PASSWD,
             .max_connection = WIFI_AP_MAX_CONN,
-            /* WPA/WPA2-PSK requires 8+ characters; "stripe" is 6 chars so
-             * we use open authentication. */
-            .authmode = WIFI_AUTH_OPEN,
+            .authmode = WIFI_AUTH_WPA2_PSK,
         },
     };
 
