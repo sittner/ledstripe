@@ -57,7 +57,7 @@ typedef struct {
     char *json;
 } ws_bcast_arg_t;
 
-static void ws_bcast_work(void *arg)
+static void ws_async_send_work(void *arg)
 {
     ws_bcast_arg_t *bcast = (ws_bcast_arg_t *)arg;
 
@@ -75,6 +75,33 @@ static void ws_bcast_work(void *arg)
 
     free(bcast->json);
     free(bcast);
+}
+
+static void ws_send_state_to_fd(int fd)
+{
+    char *json = build_state_json();
+    if (json == NULL) {
+        ESP_LOGE(TAG, "Failed to build state JSON");
+        return;
+    }
+
+    ws_bcast_arg_t *bcast = malloc(sizeof(ws_bcast_arg_t));
+    if (bcast == NULL) {
+        ESP_LOGE(TAG, "Failed to allocate send arg");
+        free(json);
+        return;
+    }
+
+    bcast->hd = server;
+    bcast->fd = fd;
+    bcast->json = json;
+
+    esp_err_t ret = httpd_queue_work(server, ws_async_send_work, bcast);
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to queue send work: %s", esp_err_to_name(ret));
+        free(json);
+        free(bcast);
+    }
 }
 
 static void ws_broadcast_state(void)
@@ -95,30 +122,7 @@ static void ws_broadcast_state(void)
         if (httpd_ws_get_fd_info(server, client_fds[i]) != HTTPD_WS_CLIENT_WEBSOCKET) {
             continue;
         }
-
-        char *json = build_state_json();
-        if (json == NULL) {
-            ESP_LOGE(TAG, "Failed to build state JSON");
-            continue;
-        }
-
-        ws_bcast_arg_t *bcast = malloc(sizeof(ws_bcast_arg_t));
-        if (bcast == NULL) {
-            ESP_LOGE(TAG, "Failed to allocate broadcast arg");
-            free(json);
-            continue;
-        }
-
-        bcast->hd = server;
-        bcast->fd = client_fds[i];
-        bcast->json = json;
-
-        ret = httpd_queue_work(server, ws_bcast_work, bcast);
-        if (ret != ESP_OK) {
-            ESP_LOGE(TAG, "Failed to queue broadcast work: %s", esp_err_to_name(ret));
-            free(json);
-            free(bcast);
-        }
+        ws_send_state_to_fd(client_fds[i]);
     }
 }
 
@@ -187,19 +191,12 @@ static void handle_ws_message(const char *msg)
 static esp_err_t ws_handler(httpd_req_t *req)
 {
     if (req->method == HTTP_GET) {
-        /* New WebSocket connection — send full current state. */
-        ESP_LOGI(TAG, "New WebSocket connection, fd=%d", httpd_req_to_sockfd(req));
-
-        char *json = build_state_json();
-        if (json != NULL) {
-            httpd_ws_frame_t frame = {
-                .type = HTTPD_WS_TYPE_TEXT,
-                .payload = (uint8_t *)json,
-                .len = strlen(json),
-            };
-            httpd_ws_send_frame(req, &frame);
-            free(json);
-        }
+        /* New WebSocket connection — handshake is completed by the framework
+         * after this handler returns. We must NOT send frames here directly;
+         * instead schedule an async send via httpd_queue_work. */
+        int fd = httpd_req_to_sockfd(req);
+        ESP_LOGI(TAG, "New WebSocket connection, fd=%d", fd);
+        ws_send_state_to_fd(fd);
         return ESP_OK;
     }
 
