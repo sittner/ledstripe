@@ -1,5 +1,6 @@
 #include "webserver.h"
 #include "slots.h"
+#include "index_html.h"
 
 #include <stdio.h>
 #include <string.h>
@@ -13,13 +14,6 @@
 static const char *TAG = "webserver";
 
 static httpd_handle_t server = NULL;
-
-static const char index_html[] =
-    "<!DOCTYPE html>\n"
-    "<html>\n"
-    "<head><meta charset=\"UTF-8\"><title>LED Stripe Editor</title></head>\n"
-    "<body><h1>Editor coming soon</h1></body>\n"
-    "</html>\n";
 
 static esp_err_t root_handler(httpd_req_t *req)
 {
